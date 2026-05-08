@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 
 init:
-	@python setup.py develop
-	@pip install -r requirements.txt
+	@uv sync --extra dev
 
 test:
 	@PYTHONPATH=. uv run pytest ./tests/
 
 publish:
-	python setup.py sdist bdist_wheel upload
+	uv run python -m build
+	uv run python -m twine check dist/*
+	uv run python -m twine upload dist/*

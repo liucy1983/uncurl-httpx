@@ -6,6 +6,8 @@ import shlex
 from collections import OrderedDict, namedtuple
 from http.cookies import SimpleCookie
 
+import httpx
+
 parser = argparse.ArgumentParser()
 parser.add_argument('command')
 parser.add_argument('url')
@@ -133,6 +135,34 @@ def parse(curl_command, **kargs):
         url=json.dumps(parsed_context.url),
         request_kargs='\n'.join(request_kargs),
     )
+
+
+def request(curl_command, **kwargs):
+    parsed_context = parse_context(curl_command)
+
+    request_kwargs = dict(kwargs)
+    if 'allow_redirects' in request_kwargs:
+        request_kwargs['follow_redirects'] = request_kwargs.pop('allow_redirects')
+
+    if parsed_context.data:
+        request_kwargs['data'] = parsed_context.data
+
+    if parsed_context.headers:
+        request_kwargs['headers'] = dict(parsed_context.headers)
+
+    if parsed_context.cookies:
+        request_kwargs['cookies'] = dict(parsed_context.cookies)
+
+    if parsed_context.auth:
+        request_kwargs['auth'] = parsed_context.auth
+
+    if parsed_context.proxy:
+        request_kwargs['proxy'] = parsed_context.proxy
+
+    if parsed_context.verify:
+        request_kwargs['verify'] = False
+
+    return httpx.request(parsed_context.method, parsed_context.url, **request_kwargs)
 
 
 def format_request_arg(key, value, trailing_comma=True):

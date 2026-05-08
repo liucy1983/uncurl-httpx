@@ -1,10 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "uncurl-httpx"
 version = "0.1.0"
 description = "uncurl for httpx, fork from uncurl-requests"
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [
+    { name = "cyliu", email = "liucy1983@gmail.com" },
+]
 dependencies = [
+    "httpx>=0.28.0",
     "pyperclip>=1.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/liucy1983/uncurl-httpx"
+
+[project.scripts]
+uncurl = "uncurl.bin:main"
+
+[project.optional-dependencies]
+dev = [
     "pytest>=9.0.3",
+    "build>=1.2.2",
+    "twine>=6.2.0",
 ]

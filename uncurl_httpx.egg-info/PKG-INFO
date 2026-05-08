@@ -1,3 +1,20 @@
+Metadata-Version: 2.4
+Name: uncurl-httpx
+Version: 0.1.0
+Summary: uncurl for httpx, fork from uncurl-requests
+Author-email: cyliu <liucy1983@gmail.com>
+Project-URL: Homepage, https://github.com/liucy1983/uncurl-httpx
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: pyperclip>=1.9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=9.0.3; extra == "dev"
+Requires-Dist: build>=1.2.2; extra == "dev"
+Requires-Dist: twine>=6.2.0; extra == "dev"
+Dynamic: license-file
+
 Forked from https://github.com/spulec/uncurl
 
 ## Changes In This Fork
@@ -84,5 +101,5 @@ pbpaste | uncurl
 ## Install
 
 ```console
-$ pip install uncurl-httpx
+$ pip install uncurl
 ```

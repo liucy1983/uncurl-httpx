@@ -1,0 +1,7 @@
+httpx>=0.28.0
+pyperclip>=1.9.0
+
+[dev]
+pytest>=9.0.3
+build>=1.2.2
+twine>=6.2.0
