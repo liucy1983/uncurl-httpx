@@ -6,7 +6,7 @@ setup(
     version='0.1.0',
     description='uncurl for httpx, fork from uncurl-requests',
     author='cyliu',
-    author_email='liuchangyuan@gmail.com',
+    author_email='liucy1983@gmail.com',
     url='https://github.com/liucy1983/uncurl-httpx',
     entry_points={
         'console_scripts': [
