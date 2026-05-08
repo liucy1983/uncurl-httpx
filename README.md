@@ -1,10 +1,22 @@
-# Uncurl - Converting curl requests to python-requests
+Forked from https://github.com/spulec/uncurl
 
-[![Build Status](https://travis-ci.org/spulec/uncurl.png?branch=master)](https://travis-ci.org/spulec/uncurl)
+## Changes In This Fork
+
+1. Switched generated client code from `requests` to `httpx`.
+2. Updated proxy and redirect argument rendering to match `httpx` semantics.
+3. Removed Python 2 compatibility code and standardized on Python 3.
+4. Replaced legacy test tooling with `pytest` and simplified the test suite.
+5. Removed unused legacy dependencies such as `six`, `mock`, `sure`, `nose`, and `coverage`.
+6. Improved code generation safety by using Python-safe literals instead of manual string quoting.
+7. Unified cookie parsing so `--cookie` and `Cookie:` headers are handled consistently.
+8. Omit empty request arguments in generated output to produce cleaner `httpx` code.
+
+
+# Uncurl - Converting curl requests to httpx
 
 # In a nutshell
 
-Uncurl is a library that allows you to convert curl requests into python code that uses [Requests](github.com/kennethreitz/requests). Since the Chrome network inspector has a nifty "Copy as cURL", this tool is useful for recreating browser requests in python.
+Uncurl is a library that allows you to convert curl requests into python code that uses [httpx](https://www.python-httpx.org/). Since the Chrome network inspector has a nifty "Copy as cURL", this tool is useful for recreating browser requests in python.
 
 When you don't pass any arguments to uncurl, it will use whatever is in your clipboard as the curl command.
 
@@ -13,7 +25,7 @@ When you don't pass any arguments to uncurl, it will use whatever is in your cli
 
 ```bash
 $ uncurl "curl 'https://pypi.python.org/pypi/uncurl' -H 'Accept-Encoding: gzip,deflate,sdch' -H 'Accept-Language: en-US,en;q=0.8' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' -H 'Cache-Control: max-age=0' -H 'Cookie: foo=bar;' -H 'Connection: keep-alive' --compressed"
-requests.get("https://pypi.python.org/pypi/uncurl", headers={
+httpx.get("https://pypi.python.org/pypi/uncurl", headers={
     "Accept-Encoding": "gzip,deflate,sdch",
     "Accept-Language": "en-US,en;q=0.8",
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36",
@@ -36,7 +48,7 @@ print(uncurl.parse("curl 'https://pypi.python.org/pypi/uncurl' -H 'Accept-Encodi
 prints the string
 
 ```bash
-'requests.get("https://pypi.python.org/pypi/uncurl", headers={
+'httpx.get("https://pypi.python.org/pypi/uncurl", headers={
     "Accept-Encoding": "gzip,deflate,sdch",
 })'
 ```

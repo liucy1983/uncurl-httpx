@@ -5,8 +5,7 @@ init:
 	@pip install -r requirements.txt
 
 test:
-	rm -f .coverage
-	@nosetests -sv --with-coverage ./tests/
+	@PYTHONPATH=. uv run pytest ./tests/
 
 publish:
 	python setup.py sdist bdist_wheel upload

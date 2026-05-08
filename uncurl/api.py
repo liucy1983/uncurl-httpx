@@ -4,8 +4,7 @@ import json
 import re
 import shlex
 from collections import OrderedDict, namedtuple
-
-from six.moves import http_cookies as Cookie
+from http.cookies import SimpleCookie
 
 parser = argparse.ArgumentParser()
 parser.add_argument('command')
@@ -32,6 +31,14 @@ def normalize_newlines(multiline_text):
     return multiline_text.replace(" \\\n", " ")
 
 
+def parse_cookies(cookie_string):
+    if not cookie_string:
+        return OrderedDict()
+
+    cookie = SimpleCookie(cookie_string)
+    return OrderedDict((key, morsel.value) for key, morsel in sorted(cookie.items()))
+
+
 def parse_context(curl_command):
     method = "get"
 
@@ -45,10 +52,7 @@ def parse_context(curl_command):
     if parsed_args.X:
         method = parsed_args.X.lower()
 
-    cookie_dict = OrderedDict()
-    for cookie in parsed_args.cookie.split('; '):
-        key, val = cookie.split('=', 1)
-        cookie_dict[key] = val        
+    cookie_dict = parse_cookies(parsed_args.cookie)
     
     quoted_headers = OrderedDict()
 
@@ -60,9 +64,8 @@ def parse_context(curl_command):
             header_key, header_value = curl_header.split(":", 1)
 
         if header_key.lower().strip("$") == 'cookie':
-            cookie = Cookie.SimpleCookie(bytes(header_value, "ascii").decode("unicode-escape"))
-            for key in cookie:
-                cookie_dict[key] = cookie[key].value
+            decoded_cookie = bytes(header_value, "ascii").decode("unicode-escape")
+            cookie_dict.update(parse_cookies(decoded_cookie))
         else:
             quoted_headers[header_key] = header_value.strip()
 
@@ -72,18 +75,11 @@ def parse_context(curl_command):
         user = tuple(user.split(':'))
 
     # add proxy and its authentication if it's available.
-    proxies = parsed_args.proxy
-    # proxy_auth = parsed_args.proxy_user
+    proxy = parsed_args.proxy
     if parsed_args.proxy and parsed_args.proxy_user:
-        proxies = {
-            "http": "http://{}@{}/".format(parsed_args.proxy_user, parsed_args.proxy),
-            "https": "http://{}@{}/".format(parsed_args.proxy_user, parsed_args.proxy),
-        }
+        proxy = "http://{}@{}/".format(parsed_args.proxy_user, parsed_args.proxy)
     elif parsed_args.proxy:
-        proxies = {
-            "http": "http://{}/".format(parsed_args.proxy),
-            "https": "http://{}/".format(parsed_args.proxy),
-        }
+        proxy = "http://{}/".format(parsed_args.proxy)
 
     return ParsedContext(
         method=method,
@@ -93,46 +89,59 @@ def parse_context(curl_command):
         cookies=cookie_dict,
         verify=parsed_args.insecure,
         auth=user,
-        proxy=proxies,
+        proxy=proxy,
     )
 
 
 def parse(curl_command, **kargs):
     parsed_context = parse_context(curl_command)
 
-    data_token = ''
+    request_kargs = []
+    for key, value in sorted(kargs.items()):
+        if key == 'allow_redirects':
+            key = 'follow_redirects'
+        request_kargs.append(format_request_arg(key, value))
+
     if parsed_context.data:
-        data_token = '{}data=\'{}\',\n'.format(BASE_INDENT, parsed_context.data)
+        request_kargs.append(format_request_arg('data', parsed_context.data))
 
-    verify_token = ''
+    if parsed_context.headers:
+        request_kargs.append(format_dict_arg('headers', parsed_context.headers))
+
+    if parsed_context.cookies:
+        request_kargs.append(format_dict_arg('cookies', parsed_context.cookies))
+
+    if parsed_context.auth:
+        request_kargs.append(format_request_arg('auth', parsed_context.auth))
+
+    if parsed_context.proxy:
+        request_kargs.append(format_request_arg('proxy', parsed_context.proxy))
+
     if parsed_context.verify:
-        verify_token = '\n{}verify=False'.format(BASE_INDENT)
+        request_kargs.append(format_request_arg('verify', False, trailing_comma=False))
 
-    requests_kargs=''
-    for k,v in sorted(kargs.items()):
-        requests_kargs += "{}{}={},\n".format(BASE_INDENT,k,str(v))
+    if not request_kargs:
+        return "httpx.{method}({url})".format(
+            method=parsed_context.method,
+            url=json.dumps(parsed_context.url),
+        )
 
-    #auth_data = f'{BASE_INDENT}auth={parsed_context.auth}'
-    auth_data = "{}auth={}".format(BASE_INDENT,parsed_context.auth)
-    proxy_data = "\n{}proxies={}".format(BASE_INDENT, parsed_context.proxy)
+    return """httpx.{method}({url},
+{request_kargs}
+)""".format(
+        method=parsed_context.method,
+        url=json.dumps(parsed_context.url),
+        request_kargs='\n'.join(request_kargs),
+    )
 
-    formatter = {
-        'method': parsed_context.method,
-        'url': parsed_context.url,
-        'data_token': data_token,
-        'headers_token': "{}headers={}".format(BASE_INDENT, dict_to_pretty_string(parsed_context.headers)),
-        'cookies_token': "{}cookies={}".format(BASE_INDENT, dict_to_pretty_string(parsed_context.cookies)),
-        'security_token': verify_token,
-        'requests_kargs': requests_kargs,
-        'auth': auth_data,
-        'proxies': proxy_data
-    }
 
-    return """requests.{method}("{url}",
-{requests_kargs}{data_token}{headers_token},
-{cookies_token},
-{auth},{proxies},{security_token}
-)""".format(**formatter)
+def format_request_arg(key, value, trailing_comma=True):
+    suffix = ',' if trailing_comma else ''
+    return "{}{}={}{}".format(BASE_INDENT, key, repr(value), suffix)
+
+
+def format_dict_arg(key, value):
+    return "{}{}={},".format(BASE_INDENT, key, dict_to_pretty_string(value))
 
 
 def dict_to_pretty_string(the_dict, indent=4):

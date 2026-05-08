@@ -1,7 +1,6 @@
 uncurl.egg-info/*
 dist/*
 .tox
-.coverage
 *.pyc
 *~
 .noseids

@@ -1,0 +1,10 @@
+[project]
+name = "uncurl-httpx"
+version = "0.1.0"
+description = "uncurl for httpx, fork from uncurl-requests"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyperclip>=1.9.0",
+    "pytest>=9.0.3",
+]
