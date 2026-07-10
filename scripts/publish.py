@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 
 
-def run(cmd, check=True):
+def run(cmd, check=True, cwd=None):
     """Run a shell command."""
     print(f"+ {' '.join(cmd)}")
-    result = subprocess.run(cmd, check=check)
+    result = subprocess.run(cmd, check=check, cwd=cwd)
     return result
 
 
