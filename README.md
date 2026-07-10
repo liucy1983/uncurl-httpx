@@ -75,6 +75,23 @@ https://pypi.python.org/pypi/uncurl-httpx
 >>> context.headers
 OrderedDict([('Accept-Encoding', 'gzip,deflate,sdch')])
 ```
+
+Or ask `parse()` to return the same mutable object, then tweak and send it:
+
+```python
+import uncurl
+
+parsed = uncurl.parse(
+    "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'",
+    as_object=True,
+)
+parsed.url = "https://example.com/api"
+parsed.headers["X-Debug"] = "1"
+
+response = parsed.request(timeout=5.0)
+print(response.status_code)
+```
+
 On Mac OS, you can also pipe input to uncurl:
 
 ```bash

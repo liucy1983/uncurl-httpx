@@ -1,3 +1,3 @@
-from .api import parse, parse_context, request
+from .api import ParsedContext, parse, parse_context, request
 
-__all__ = ("parse", "parse_context", "request")
+__all__ = ("ParsedContext", "parse", "parse_context", "request")

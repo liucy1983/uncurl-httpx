@@ -30,6 +30,41 @@ def test_request_executes_httpx_request(mocker=None):
     )
 
 
+def test_parse_can_return_mutable_object():
+    parsed = uncurl.parse("curl 'https://pypi.python.org/pypi/uncurl-httpx'", as_object=True)
+
+    assert isinstance(parsed, uncurl.ParsedContext)
+    parsed.method = 'post'
+    parsed.data = 'patched'
+
+    assert parsed.to_code() == """httpx.post(\"https://pypi.python.org/pypi/uncurl-httpx\",
+    data='patched',
+)"""
+
+
+def test_parse_object_can_request():
+    from unittest.mock import patch
+
+    parsed = uncurl.parse(
+        "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'",
+        as_object=True,
+    )
+    parsed.url = 'https://example.com/override'
+
+    with patch("uncurl.api.httpx.request", return_value=sentinel.response) as request_mock:
+        response = parsed.request(timeout=1.0)
+
+    assert response is sentinel.response
+    request_mock.assert_called_once_with(
+        'get',
+        'https://example.com/override',
+        timeout=1.0,
+        headers={
+            'Accept-Encoding': 'gzip,deflate,sdch',
+        },
+    )
+
+
 def test_basic_get():
     assert_parse("curl 'https://pypi.python.org/pypi/uncurl-httpx'", """httpx.get("https://pypi.python.org/pypi/uncurl-httpx")"""
     )

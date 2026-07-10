@@ -3,8 +3,10 @@ import argparse
 import json
 import re
 import shlex
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
+from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
+from typing import Any, Optional, Tuple
 
 import httpx
 
@@ -26,7 +28,85 @@ parser.add_argument('-U', '--proxy-user', default='')
 
 BASE_INDENT = " " * 4
 
-ParsedContext = namedtuple('ParsedContext', ['method', 'url', 'data', 'headers', 'cookies', 'verify', 'auth', 'proxy'])
+
+@dataclass
+class ParsedContext:
+    method: str
+    url: str
+    data: Optional[str] = None
+    headers: OrderedDict = field(default_factory=OrderedDict)
+    cookies: OrderedDict = field(default_factory=OrderedDict)
+    verify: bool = False
+    auth: Tuple[str, ...] = ()
+    proxy: Any = field(default_factory=dict)
+
+    def build_request_kwargs(self, **kwargs):
+        request_kwargs = dict(kwargs)
+        if 'allow_redirects' in request_kwargs:
+            request_kwargs['follow_redirects'] = request_kwargs.pop('allow_redirects')
+
+        if self.data:
+            request_kwargs['data'] = self.data
+
+        if self.headers:
+            request_kwargs['headers'] = dict(self.headers)
+
+        if self.cookies:
+            request_kwargs['cookies'] = dict(self.cookies)
+
+        if self.auth:
+            request_kwargs['auth'] = self.auth
+
+        if self.proxy:
+            request_kwargs['proxy'] = self.proxy
+
+        if self.verify:
+            request_kwargs['verify'] = False
+
+        return request_kwargs
+
+    def to_code(self, **kwargs):
+        request_kwargs = []
+
+        for key, value in sorted(kwargs.items()):
+            if key == 'allow_redirects':
+                key = 'follow_redirects'
+            request_kwargs.append(format_request_arg(key, value))
+
+        if self.data:
+            request_kwargs.append(format_request_arg('data', self.data))
+
+        if self.headers:
+            request_kwargs.append(format_dict_arg('headers', self.headers))
+
+        if self.cookies:
+            request_kwargs.append(format_dict_arg('cookies', self.cookies))
+
+        if self.auth:
+            request_kwargs.append(format_request_arg('auth', self.auth))
+
+        if self.proxy:
+            request_kwargs.append(format_request_arg('proxy', self.proxy))
+
+        if self.verify:
+            request_kwargs.append(format_request_arg('verify', False, trailing_comma=False))
+
+        if not request_kwargs:
+            return "httpx.{method}({url})".format(
+                method=self.method,
+                url=json.dumps(self.url),
+            )
+
+        return """httpx.{method}({url},
+{request_kwargs}
+)""".format(
+            method=self.method,
+            url=json.dumps(self.url),
+            request_kwargs='\n'.join(request_kwargs),
+        )
+
+    def request(self, **kwargs):
+        return httpx.request(self.method, self.url, **self.build_request_kwargs(**kwargs))
 
 
 def normalize_newlines(multiline_text):
@@ -95,74 +175,18 @@ def parse_context(curl_command):
     )
 
 
-def parse(curl_command, **kargs):
+def parse(curl_command, as_object=True, **kwargs):
     parsed_context = parse_context(curl_command)
 
-    request_kargs = []
-    for key, value in sorted(kargs.items()):
-        if key == 'allow_redirects':
-            key = 'follow_redirects'
-        request_kargs.append(format_request_arg(key, value))
+    if as_object:
+        return parsed_context
 
-    if parsed_context.data:
-        request_kargs.append(format_request_arg('data', parsed_context.data))
-
-    if parsed_context.headers:
-        request_kargs.append(format_dict_arg('headers', parsed_context.headers))
-
-    if parsed_context.cookies:
-        request_kargs.append(format_dict_arg('cookies', parsed_context.cookies))
-
-    if parsed_context.auth:
-        request_kargs.append(format_request_arg('auth', parsed_context.auth))
-
-    if parsed_context.proxy:
-        request_kargs.append(format_request_arg('proxy', parsed_context.proxy))
-
-    if parsed_context.verify:
-        request_kargs.append(format_request_arg('verify', False, trailing_comma=False))
-
-    if not request_kargs:
-        return "httpx.{method}({url})".format(
-            method=parsed_context.method,
-            url=json.dumps(parsed_context.url),
-        )
-
-    return """httpx.{method}({url},
-{request_kargs}
-)""".format(
-        method=parsed_context.method,
-        url=json.dumps(parsed_context.url),
-        request_kargs='\n'.join(request_kargs),
-    )
+    return parsed_context.to_code(**kwargs)
 
 
 def request(curl_command, **kwargs):
     parsed_context = parse_context(curl_command)
-
-    request_kwargs = dict(kwargs)
-    if 'allow_redirects' in request_kwargs:
-        request_kwargs['follow_redirects'] = request_kwargs.pop('allow_redirects')
-
-    if parsed_context.data:
-        request_kwargs['data'] = parsed_context.data
-
-    if parsed_context.headers:
-        request_kwargs['headers'] = dict(parsed_context.headers)
-
-    if parsed_context.cookies:
-        request_kwargs['cookies'] = dict(parsed_context.cookies)
-
-    if parsed_context.auth:
-        request_kwargs['auth'] = parsed_context.auth
-
-    if parsed_context.proxy:
-        request_kwargs['proxy'] = parsed_context.proxy
-
-    if parsed_context.verify:
-        request_kwargs['verify'] = False
-
-    return httpx.request(parsed_context.method, parsed_context.url, **request_kwargs)
+    return parsed_context.request(**kwargs)
 
 
 def format_request_arg(key, value, trailing_comma=True):
