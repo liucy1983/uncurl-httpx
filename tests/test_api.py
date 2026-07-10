@@ -3,7 +3,7 @@ from unittest.mock import sentinel
 
 
 def assert_parse(command, expected, **kwargs):
-    assert uncurl.parse(command, **kwargs) == expected
+    assert uncurl.parse(command, as_object=False, **kwargs) == expected
 
 
 def test_request_executes_httpx_request(mocker=None):

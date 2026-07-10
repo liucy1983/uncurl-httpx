@@ -42,7 +42,10 @@ The underlying API:
 ```python
 import uncurl
 
-print(uncurl.parse("curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'"))
+parsed = uncurl.parse(
+    "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'"
+)
+print(parsed.headers)
 ```
 
 如果你想直接发起请求，也可以调用：
@@ -57,33 +60,46 @@ response = uncurl.request(
 print(response.status_code)
 ```
 
-prints the string
+If you want the generated `httpx` code string, ask explicitly:
+
+```python
+import uncurl
+
+print(
+    uncurl.parse(
+        "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'",
+        as_object=False,
+    )
+)
+```
+
+This prints:
 
 ```bash
-'httpx.get("https://pypi.python.org/pypi/uncurl-httpx", headers={
+httpx.get("https://pypi.python.org/pypi/uncurl-httpx", headers={
     "Accept-Encoding": "gzip,deflate,sdch",
-})'
+})
 ```
 
 You can also retrieve the components as python objects:
 
 ```python
->>> import uncurl
->>> context = uncurl.parse_context("curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'")
->>> context.url
-https://pypi.python.org/pypi/uncurl-httpx
->>> context.headers
-OrderedDict([('Accept-Encoding', 'gzip,deflate,sdch')])
+import uncurl
+
+context = uncurl.parse_context(
+    "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'"
+)
+print(context.url)
+print(context.headers)
 ```
 
-Or ask `parse()` to return the same mutable object, then tweak and send it:
+`parse()` already returns a mutable object by default, so you can tweak and send it directly:
 
 ```python
 import uncurl
 
 parsed = uncurl.parse(
-    "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'",
-    as_object=True,
+    "curl 'https://pypi.python.org/pypi/uncurl-httpx' -H 'Accept-Encoding: gzip,deflate,sdch'"
 )
 parsed.url = "https://example.com/api"
 parsed.headers["X-Debug"] = "1"
@@ -103,3 +119,23 @@ pbpaste | uncurl
 ```console
 $ pip install uncurl-httpx
 ```
+
+## Release to PyPI with GitHub Actions
+
+This repository includes `.github/workflows/publish.yml`.
+Pushing a tag like `v0.1.1` will:
+
+1. run the test suite,
+2. build the package,
+3. validate the built artifacts with `twine check`,
+4. publish to PyPI.
+
+Before using it, configure a PyPI Trusted Publisher for this GitHub repository and workflow.
+
+Create and push a release tag with:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+

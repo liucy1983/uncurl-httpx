@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-07-10
+
+- Added `.github/workflows/publish.yml` to test, build, and publish tagged releases to PyPI via GitHub Actions.
+- Documented the GitHub Actions release flow and PyPI Trusted Publisher setup in `README.md`.
+- Made `parse(...)` return a mutable `ParsedContext` by default; pass `as_object=False` when you want generated `httpx` source code.
+- Updated the CLI and tests to request string output explicitly where needed.
+
 ## 0.1.1 - 2026-07-10
 
 - Added object mode for `parse(...)` via `as_object=True`, returning a mutable `ParsedContext` for post-parse edits.

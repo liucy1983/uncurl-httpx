@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: uncurl-httpx
-Version: 0.1.1
+Version: 0.1.2
 Summary: uncurl for httpx, fork from uncurl-requests
 Author-email: cyliu <liucy1983@gmail.com>
 Project-URL: Homepage, https://github.com/liucy1983/uncurl-httpx
