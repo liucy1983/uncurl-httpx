@@ -7,6 +7,4 @@ test:
 	@PYTHONPATH=. uv run pytest ./tests/
 
 publish:
-	uv run python -m build
-	uv run python -m twine check dist/*
-	uv run python -m twine upload dist/*
+	uv run python scripts/publish.py

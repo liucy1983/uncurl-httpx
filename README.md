@@ -122,6 +122,38 @@ $ pip install uncurl-httpx
 
 ## Release to PyPI with GitHub Actions
 
+This repository includes `.github/workflows/publish.yml` for automated releases. However, if GitHub Actions is disabled on your account, you can publish manually.
+
+## Manual Release to PyPI
+
+Create a local `.env` file at the project root:
+
+```dotenv
+PYPI_TOKEN=pypi-your-token-from-pypi-org
+```
+
+Then run:
+
+```bash
+make publish
+```
+
+Or directly:
+
+```bash
+uv run python scripts/publish.py
+```
+
+The script will:
+1. Run tests
+2. Build distributions
+3. Check with `twine`
+4. Upload to PyPI
+
+After upload completes, the new version will appear on [PyPI](https://pypi.org/project/uncurl-httpx/).
+
+## Automated Release with GitHub Actions
+
 This repository includes `.github/workflows/publish.yml`.
 Pushing a tag like `v0.1.1` will:
 

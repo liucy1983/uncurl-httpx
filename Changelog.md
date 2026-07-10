@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added `scripts/publish.py` to manually publish to PyPI using a token from `.env` file or environment variable.
+- Added `.env.example` and `.env` to `.gitignore`.
+- Updated `Makefile` `publish` target to use the new script.
+- Added manual publishing documentation to `README.md` for accounts with GitHub Actions disabled.
+
 ## 0.1.2 - 2026-07-10
 
 - Added `.github/workflows/publish.yml` to test, build, and publish tagged releases to PyPI via GitHub Actions.
