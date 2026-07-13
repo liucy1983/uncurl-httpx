@@ -3,6 +3,7 @@ import argparse
 import json
 import re
 import shlex
+import warnings
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
@@ -19,10 +20,10 @@ parser.add_argument('--data-binary', '--data-raw', default=None)
 parser.add_argument('-X', default='')
 parser.add_argument('-H', '--header', action='append', default=[])
 parser.add_argument('--compressed', action='store_true')
-parser.add_argument('-k','--insecure', action='store_true')
+parser.add_argument('-k', '--insecure', action='store_true')
 parser.add_argument('--user', '-u', default=())
-parser.add_argument('-i','--include', action='store_true')
-parser.add_argument('-s','--silent', action='store_true')
+parser.add_argument('-i', '--include', action='store_true')
+parser.add_argument('-s', '--silent', action='store_true')
 parser.add_argument('-x', '--proxy', default={})
 parser.add_argument('-U', '--proxy-user', default='')
 
@@ -33,12 +34,13 @@ BASE_INDENT = " " * 4
 class ParsedContext:
     method: str
     url: str
-    data: Optional[str] = None
+    data: Optional[Any] = None
     headers: OrderedDict = field(default_factory=OrderedDict)
     cookies: OrderedDict = field(default_factory=OrderedDict)
     verify: bool = False
     auth: Tuple[str, ...] = ()
     proxy: Any = field(default_factory=dict)
+    is_json_data: bool = field(default=True)
 
     def build_request_kwargs(self, **kwargs):
         request_kwargs = dict(kwargs)
@@ -46,7 +48,10 @@ class ParsedContext:
             request_kwargs['follow_redirects'] = request_kwargs.pop('allow_redirects')
 
         if self.data:
-            request_kwargs['data'] = self.data
+            if self.is_json_data:
+                request_kwargs['data'] = json.dumps(self.data)
+            else:
+                request_kwargs['data'] = self.data
 
         if self.headers:
             request_kwargs['headers'] = dict(self.headers)
@@ -74,7 +79,11 @@ class ParsedContext:
             request_kwargs.append(format_request_arg(key, value))
 
         if self.data:
-            request_kwargs.append(format_request_arg('data', self.data))
+            data_value = self.data
+            if self.is_json_data and not isinstance(self.data, str):
+                # Keep generated code stable with curl-like JSON string payloads.
+                data_value = json.dumps(self.data, separators=(",", ":"))
+            request_kwargs.append(format_request_arg('data', data_value))
 
         if self.headers:
             request_kwargs.append(format_dict_arg('headers', self.headers))
@@ -105,12 +114,36 @@ class ParsedContext:
             request_kwargs='\n'.join(request_kwargs),
         )
 
+    def set_header(self, header_name, header_value):
+        self.headers[header_name] = header_value
+        return self
+
+    def set_cookie(self, cookie_name, cookie_value):
+        self.cookies[cookie_name] = cookie_value
+        return self
+
+    def set_proxy(self, proxy):
+        self.proxy = proxy
+        return self
+
+    def set_data(self, data: Optional[Any] = None, data_key: Optional[str] = None,
+                 data_value: Optional[Any] = None):
+        if data:
+            self.data = data
+        elif data_key:
+            if self.is_json_data:
+                if isinstance(self.data, dict):
+                    self.data[data_key] = data_value
+                else:
+                    warnings.warn("Current request data is not Dict, skipping set_data()", RuntimeWarning)
+            else:
+                warnings.warn("Current request data is not JSON, skipping set_data().", UserWarning)
+        else:
+            warnings.warn("data or data_key must be provided.", UserWarning)
+        return self
+
     def request(self, **kwargs):
         return httpx.request(self.method, self.url, **self.build_request_kwargs(**kwargs))
-
-
-def normalize_newlines(multiline_text):
-    return multiline_text.replace(" \\\n", " ")
 
 
 def parse_cookies(cookie_string):
@@ -121,10 +154,10 @@ def parse_cookies(cookie_string):
     return OrderedDict((key, morsel.value) for key, morsel in sorted(cookie.items()))
 
 
-def parse_context(curl_command):
+def parse_context(curl_command, is_json_data: bool = True):
     method = "get"
 
-    tokens = shlex.split(normalize_newlines(curl_command))
+    tokens = shlex.split(curl_command.replace(" \\\n", " "))
     parsed_args = parser.parse_args(tokens)
 
     post_data = parsed_args.data or parsed_args.data_binary
@@ -135,7 +168,7 @@ def parse_context(curl_command):
         method = parsed_args.X.lower()
 
     cookie_dict = parse_cookies(parsed_args.cookie)
-    
+
     quoted_headers = OrderedDict()
 
     for curl_header in parsed_args.header:
@@ -163,6 +196,12 @@ def parse_context(curl_command):
     elif parsed_args.proxy:
         proxy = "http://{}/".format(parsed_args.proxy)
 
+    if post_data and is_json_data:
+        try:
+            post_data = json.loads(post_data)
+        except (TypeError, json.JSONDecodeError):
+            # Fallback to plain text payload when request body is not valid JSON.
+            is_json_data = False
     return ParsedContext(
         method=method,
         url=parsed_args.url,
@@ -172,11 +211,12 @@ def parse_context(curl_command):
         verify=parsed_args.insecure,
         auth=user,
         proxy=proxy,
+        is_json_data=is_json_data,
     )
 
 
-def parse(curl_command, as_object=True, **kwargs):
-    parsed_context = parse_context(curl_command)
+def parse(curl_command, as_object=True, is_json_data: bool = True, **kwargs):
+    parsed_context = parse_context(curl_command, is_json_data)
 
     if as_object:
         return parsed_context
@@ -204,4 +244,3 @@ def dict_to_pretty_string(the_dict, indent=4):
 
     return ("\n" + " " * indent).join(
         json.dumps(the_dict, sort_keys=True, indent=indent, separators=(',', ': ')).splitlines())
-
