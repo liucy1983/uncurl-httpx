@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-- Added `scripts/publish.py` to manually publish to PyPI using a token from `.env` file or environment variable.
-- Added `.env.example` and `.env` to `.gitignore`.
-- Updated `Makefile` `publish` target to use the new script.
-- Added manual publishing documentation to `README.md` for accounts with GitHub Actions disabled.
+## 0.1.3 - 2026-07-13
+
+- Added `is_json_data` field to `ParsedContext` to auto-detect JSON payloads and handle them accordingly.
+- Implemented JSON auto-detection with fallback: `parse_context()` attempts to parse `--data` as JSON when `is_json_data=True`, falling back to plain text on failure.
+- Added JSON validation to `ParsedContext.set_data()`: warns and skips assignment if the current payload is not a JSON object.
+- Updated `ParsedContext.to_code()` to preserve original JSON string format when generating code, ensuring curl-like output with compact JSON serialization.
+- Enhanced `ParsedContext.build_request_kwargs()` to handle both JSON-parsed objects (serialized via `json.dumps`) and plain text payloads.
 
 ## 0.1.2 - 2026-07-10
 
